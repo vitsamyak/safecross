@@ -1,0 +1,1828 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SafeCross — Smart Zebra Crossing System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />.
+    <style>
+      /* ── Root Variables ── */
+      :root {
+        --bg-base: #020b18;
+        --bg-mid: #041226;
+        --accent-cyan: #00f5ff;
+        --accent-blue: #0080ff;
+        --accent-green: #00ff88;
+        --accent-red: #ff3f5e;
+        --accent-amber: #ffb300;
+        --glass-bg: rgba(255, 255, 255, 0.04);
+        --glass-border: rgba(0, 245, 255, 0.15);
+        --text-primary: #e8f4ff;
+        --text-muted: #6a8fa8;
+        --font-main: "Exo 2", sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+        --radius: 16px;
+        --glow-cyan: 0 0 20px rgba(0, 245, 255, 0.4);
+        --glow-green: 0 0 20px rgba(0, 255, 136, 0.4);
+        --glow-red: 0 0 20px rgba(255, 63, 94, 0.4);
+      }
+
+      /* ── Reset & Base ── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: var(--font-main);
+        background: var(--bg-base);
+        color: var(--text-primary);
+        overflow-x: hidden;
+        min-height: 100vh;
+      }
+
+      /* ── Scrollbar ── */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg-base);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--accent-blue);
+        border-radius: 3px;
+      }
+
+      /* ── Starfield Canvas ── */
+      #starfield {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      /* ── Grid Overlay ── */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+        background-size: 60px 60px;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      /* ── Wrapper ── */
+      .page {
+        position: relative;
+        z-index: 1;
+      }
+
+      /* ══════════════════════════════════════
+     NAV
+  ══════════════════════════════════════ */
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 40px;
+        background: rgba(2, 11, 24, 0.8);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--glass-border);
+      }
+      .nav-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        font-size: 1.1rem;
+        letter-spacing: 0.08em;
+        color: var(--accent-cyan);
+      }
+      .nav-logo .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent-green);
+        animation: pulse-green 1.4s ease-in-out infinite;
+      }
+      .nav-links {
+        display: flex;
+        gap: 28px;
+      }
+      .nav-links a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        transition: color 0.2s;
+      }
+      .nav-links a:hover {
+        color: var(--accent-cyan);
+      }
+      .nav-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.75rem;
+        font-family: var(--font-mono);
+        color: var(--accent-green);
+      }
+      .nav-status .led {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent-green);
+        box-shadow: var(--glow-green);
+        animation: pulse-green 1.4s ease-in-out infinite;
+      }
+
+      /* ══════════════════════════════════════
+     HERO
+  ══════════════════════════════════════ */
+      #hero {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        text-align: center;
+        padding: 100px 24px 60px;
+        position: relative;
+      }
+      .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 18px;
+        border-radius: 999px;
+        border: 1px solid var(--glass-border);
+        background: var(--glass-bg);
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent-cyan);
+        margin-bottom: 28px;
+        animation: fadeSlideDown 0.8s ease both;
+      }
+      .hero-badge .blink {
+        animation: blink 1s step-end infinite;
+      }
+      .hero-title {
+        font-size: clamp(2.4rem, 6vw, 5rem);
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        background: linear-gradient(
+          135deg,
+          #ffffff 0%,
+          var(--accent-cyan) 50%,
+          var(--accent-blue) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: fadeSlideDown 0.9s 0.15s ease both;
+      }
+      .hero-subtitle {
+        margin-top: 16px;
+        font-size: clamp(1rem, 2vw, 1.4rem);
+        font-weight: 300;
+        color: var(--text-muted);
+        letter-spacing: 0.04em;
+        animation: fadeSlideDown 1s 0.3s ease both;
+      }
+      .hero-subtitle span {
+        color: var(--accent-cyan);
+        font-weight: 600;
+      }
+      .hero-actions {
+        margin-top: 40px;
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        justify-content: center;
+        animation: fadeSlideDown 1s 0.45s ease both;
+      }
+      .btn-primary {
+        padding: 14px 36px;
+        border-radius: 8px;
+        background: linear-gradient(
+          135deg,
+          var(--accent-blue),
+          var(--accent-cyan)
+        );
+        color: #fff;
+        font-family: var(--font-main);
+        font-weight: 700;
+        font-size: 0.9rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 0 30px rgba(0, 128, 255, 0.4);
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+        position: relative;
+        overflow: hidden;
+      }
+      .btn-primary::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateX(-100%);
+        transition: transform 0.3s;
+      }
+      .btn-primary:hover::after {
+        transform: translateX(0);
+      }
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 50px rgba(0, 245, 255, 0.5);
+      }
+      .btn-secondary {
+        padding: 14px 36px;
+        border-radius: 8px;
+        background: var(--glass-bg);
+        color: var(--accent-cyan);
+        font-family: var(--font-main);
+        font-weight: 700;
+        font-size: 0.9rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        border: 1px solid var(--glass-border);
+        cursor: pointer;
+        transition:
+          background 0.2s,
+          box-shadow 0.2s;
+      }
+      .btn-secondary:hover {
+        background: rgba(0, 245, 255, 0.1);
+        box-shadow: var(--glow-cyan);
+      }
+
+      /* Hero crossing illustration */
+      .hero-visual {
+        margin-top: 60px;
+        width: 100%;
+        max-width: 700px;
+        animation: fadeSlideDown 1s 0.6s ease both;
+      }
+      .crossing-road {
+        position: relative;
+        height: 90px;
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .crossing-stripes {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        padding: 0 20px;
+      }
+      .stripe {
+        flex: 1;
+        max-width: 40px;
+        height: 56px;
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: 4px;
+        animation: stripeFlash 2s ease-in-out infinite;
+      }
+      .stripe:nth-child(even) {
+        animation-delay: 0.4s;
+        opacity: 0.6;
+      }
+      .car-icon,
+      .ped-icon {
+        position: absolute;
+        top: 50%;
+        font-size: 1.8rem;
+        transform: translateY(-50%);
+      }
+      .car-icon {
+        left: -60px;
+        animation: carDrive 4s linear infinite;
+      }
+      .ped-icon {
+        right: 20px;
+        animation: pedWalk 3s ease-in-out infinite 1s;
+        opacity: 0;
+      }
+
+      /* ══════════════════════════════════════
+     SECTION COMMON
+  ══════════════════════════════════════ */
+      section {
+        padding: 80px 24px;
+      }
+      .section-label {
+        font-size: 0.7rem;
+        font-family: var(--font-mono);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent-cyan);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .section-label::before {
+        content: "";
+        display: block;
+        width: 24px;
+        height: 1px;
+        background: var(--accent-cyan);
+      }
+      .section-title {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+        margin-bottom: 40px;
+      }
+      .section-title span {
+        color: var(--accent-cyan);
+      }
+      .container {
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+
+      /* ── Glass Card ── */
+      .glass {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius);
+        transition:
+          transform 0.25s,
+          box-shadow 0.25s,
+          border-color 0.25s;
+      }
+      .glass:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 60px rgba(0, 245, 255, 0.08);
+        border-color: rgba(0, 245, 255, 0.35);
+      }
+
+      /* ══════════════════════════════════════
+     STATS CARDS
+  ══════════════════════════════════════ */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+      }
+      .stat-card {
+        padding: 28px;
+        position: relative;
+        overflow: hidden;
+      }
+      .stat-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--card-accent, var(--accent-cyan)),
+          transparent
+        );
+      }
+      .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 16px;
+        filter: drop-shadow(0 0 10px var(--card-accent, var(--accent-cyan)));
+      }
+      .stat-label {
+        font-size: 0.72rem;
+        font-family: var(--font-mono);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+      }
+      .stat-value {
+        font-size: 2.8rem;
+        font-weight: 800;
+        color: var(--card-accent, var(--accent-cyan));
+        font-family: var(--font-mono);
+        line-height: 1;
+      }
+      .stat-sub {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin-top: 8px;
+      }
+      .stat-sub .up {
+        color: var(--accent-green);
+      }
+      .stat-card:nth-child(1) {
+        --card-accent: var(--accent-cyan);
+      }
+      .stat-card:nth-child(2) {
+        --card-accent: var(--accent-green);
+      }
+      .stat-card:nth-child(3) {
+        --card-accent: var(--accent-red);
+      }
+      .stat-card:nth-child(4) {
+        --card-accent: var(--accent-amber);
+      }
+
+      /* ══════════════════════════════════════
+     REAL-TIME STATUS
+  ══════════════════════════════════════ */
+      .status-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      @media (max-width: 768px) {
+        .status-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .status-panel {
+        padding: 28px;
+      }
+      .status-panel h3 {
+        font-size: 0.72rem;
+        font-family: var(--font-mono);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 20px;
+      }
+      .status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      }
+      .status-row:last-child {
+        border-bottom: none;
+      }
+      .status-name {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      .status-name small {
+        display: block;
+        font-size: 0.7rem;
+        font-family: var(--font-mono);
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+      .led-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.72rem;
+        font-family: var(--font-mono);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .led {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        position: relative;
+      }
+      .led.green {
+        background: var(--accent-green);
+        box-shadow: var(--glow-green);
+        animation: pulse-green 1.4s ease-in-out infinite;
+      }
+      .led.red {
+        background: var(--accent-red);
+        box-shadow: var(--glow-red);
+        animation: pulse-red 1.4s ease-in-out infinite;
+      }
+      .led.amber {
+        background: var(--accent-amber);
+        box-shadow: 0 0 14px rgba(255, 179, 0, 0.6);
+        animation: pulse-amber 1s ease-in-out infinite;
+      }
+
+      /* Toggle switch */
+      .toggle-group {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-top: 20px;
+      }
+      .toggle-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-radius: 10px;
+        background: rgba(0, 245, 255, 0.03);
+        border: 1px solid rgba(0, 245, 255, 0.08);
+      }
+      .toggle-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .switch {
+        position: relative;
+        width: 48px;
+        height: 26px;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        inset: 0;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        transition: background 0.3s;
+      }
+      .slider::before {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #fff;
+        left: 3px;
+        top: 3px;
+        transition: transform 0.3s;
+      }
+      input:checked + .slider {
+        background: var(--accent-cyan);
+        box-shadow: var(--glow-cyan);
+      }
+      input:checked + .slider::before {
+        transform: translateX(22px);
+      }
+
+      /* Traffic Signal */
+      .signal-wrap {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 28px;
+      }
+      .signal-pole {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+      .signal-box {
+        width: 72px;
+        background: #0a0e17;
+        border: 2px solid #1e2a3a;
+        border-radius: 14px;
+        padding: 12px 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        box-shadow:
+          inset 0 0 20px rgba(0, 0, 0, 0.6),
+          0 0 40px rgba(0, 128, 255, 0.2);
+      }
+      .signal-light {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        transition: all 0.5s;
+      }
+      .signal-light.off {
+        background: rgba(255, 255, 255, 0.06);
+        box-shadow: none;
+      }
+      .signal-light.red-on {
+        background: radial-gradient(
+          circle at 35% 35%,
+          #ff8090,
+          var(--accent-red)
+        );
+        box-shadow:
+          0 0 30px rgba(255, 63, 94, 0.9),
+          0 0 60px rgba(255, 63, 94, 0.4);
+      }
+      .signal-light.green-on {
+        background: radial-gradient(
+          circle at 35% 35%,
+          #80ffbb,
+          var(--accent-green)
+        );
+        box-shadow:
+          0 0 30px rgba(0, 255, 136, 0.9),
+          0 0 60px rgba(0, 255, 136, 0.4);
+      }
+      .signal-light.amber-on {
+        background: radial-gradient(
+          circle at 35% 35%,
+          #ffe080,
+          var(--accent-amber)
+        );
+        box-shadow:
+          0 0 30px rgba(255, 179, 0, 0.9),
+          0 0 60px rgba(255, 179, 0, 0.4);
+      }
+      .signal-stem {
+        width: 8px;
+        height: 60px;
+        background: #1e2a3a;
+        border-radius: 4px;
+      }
+      .signal-base {
+        width: 80px;
+        height: 14px;
+        background: #1e2a3a;
+        border-radius: 4px;
+      }
+      .signal-label {
+        margin-top: 12px;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        text-align: center;
+      }
+      #signal-status-text {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--accent-green);
+        text-align: center;
+        margin-top: 8px;
+        min-height: 24px;
+        font-family: var(--font-mono);
+        letter-spacing: 0.06em;
+      }
+
+      /* ══════════════════════════════════════
+     ACTIVITY LOG
+  ══════════════════════════════════════ */
+      .log-wrap {
+        overflow: hidden;
+        border-radius: var(--radius);
+      }
+      .log-table-header {
+        display: grid;
+        grid-template-columns: 40px 1fr 1fr 140px 80px;
+        padding: 12px 20px;
+        font-size: 0.68rem;
+        font-family: var(--font-mono);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--glass-border);
+        background: rgba(0, 245, 255, 0.03);
+      }
+      .log-scroll {
+        height: 320px;
+        overflow-y: auto;
+      }
+      .log-scroll::-webkit-scrollbar {
+        width: 4px;
+      }
+      .log-scroll::-webkit-scrollbar-thumb {
+        background: var(--accent-blue);
+      }
+      .log-row {
+        display: grid;
+        grid-template-columns: 40px 1fr 1fr 140px 80px;
+        padding: 13px 20px;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        font-size: 0.82rem;
+        font-family: var(--font-mono);
+        animation: rowIn 0.4s ease both;
+        transition: background 0.2s;
+      }
+      .log-row:hover {
+        background: rgba(0, 245, 255, 0.04);
+      }
+      .log-idx {
+        color: var(--text-muted);
+      }
+      .log-type {
+        font-weight: 600;
+      }
+      .log-type.vehicle {
+        color: var(--accent-cyan);
+      }
+      .log-type.pedestrian {
+        color: var(--accent-green);
+      }
+      .log-type.alert {
+        color: var(--accent-red);
+      }
+      .log-type.system {
+        color: var(--accent-amber);
+      }
+      .log-location {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+      }
+      .log-time {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+      }
+      .log-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .log-badge.ok {
+        background: rgba(0, 255, 136, 0.12);
+        color: var(--accent-green);
+      }
+      .log-badge.warn {
+        background: rgba(255, 63, 94, 0.12);
+        color: var(--accent-red);
+      }
+      .log-badge.info {
+        background: rgba(0, 128, 255, 0.12);
+        color: var(--accent-blue);
+      }
+
+      @media (max-width: 600px) {
+        .log-table-header,
+        .log-row {
+          grid-template-columns: 30px 1fr 120px 60px;
+        }
+        .log-location {
+          display: none;
+        }
+      }
+
+      /* ══════════════════════════════════════
+     CHART
+  ══════════════════════════════════════ */
+      .chart-wrap {
+        padding: 28px;
+      }
+      .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+      }
+      .chart-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+      .chart-legend {
+        display: flex;
+        gap: 20px;
+        font-size: 0.72rem;
+        font-family: var(--font-mono);
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-muted);
+      }
+      .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+      canvas#activityChart {
+        width: 100% !important;
+        height: 260px !important;
+      }
+
+      /* ══════════════════════════════════════
+     FLOW DIAGRAM
+  ══════════════════════════════════════ */
+      .flow-wrap {
+        padding: 36px 28px;
+        overflow-x: auto;
+      }
+      .flow-nodes {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        min-width: 600px;
+        justify-content: center;
+      }
+      .flow-node {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 90px;
+        animation: fadeSlideDown 0.6s ease both;
+      }
+      .flow-node:nth-child(1) {
+        animation-delay: 0.1s;
+      }
+      .flow-node:nth-child(3) {
+        animation-delay: 0.25s;
+      }
+      .flow-node:nth-child(5) {
+        animation-delay: 0.4s;
+      }
+      .flow-node:nth-child(7) {
+        animation-delay: 0.55s;
+      }
+      .flow-node:nth-child(9) {
+        animation-delay: 0.7s;
+      }
+      .node-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+        border: 1px solid var(--glass-border);
+        background: var(--glass-bg);
+        position: relative;
+        overflow: hidden;
+        transition:
+          transform 0.3s,
+          box-shadow 0.3s;
+        cursor: default;
+      }
+      .node-icon::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(0, 245, 255, 0.08),
+          transparent
+        );
+      }
+      .node-icon:hover {
+        transform: scale(1.12);
+        box-shadow: 0 0 30px rgba(0, 245, 255, 0.3);
+      }
+      .node-label {
+        font-size: 0.7rem;
+        font-family: var(--font-mono);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        text-align: center;
+        line-height: 1.4;
+      }
+      .flow-arrow {
+        flex: 0.6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        height: 2px;
+        margin-bottom: 28px;
+      }
+      .flow-arrow::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          90deg,
+          var(--accent-cyan),
+          var(--accent-blue)
+        );
+        border-radius: 1px;
+      }
+      .arrow-dot {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent-cyan);
+        box-shadow: var(--glow-cyan);
+        animation: flowDot 2s linear infinite;
+      }
+      .flow-arrow:nth-child(2) .arrow-dot {
+        animation-delay: 0.4s;
+      }
+      .flow-arrow:nth-child(4) .arrow-dot {
+        animation-delay: 0.8s;
+      }
+      .flow-arrow:nth-child(6) .arrow-dot {
+        animation-delay: 1.2s;
+      }
+      .flow-arrow:nth-child(8) .arrow-dot {
+        animation-delay: 1.6s;
+      }
+
+      /* ══════════════════════════════════════
+     FOOTER
+  ══════════════════════════════════════ */
+      footer {
+        padding: 48px 24px 32px;
+        border-top: 1px solid var(--glass-border);
+        background: rgba(2, 18, 38, 0.6);
+      }
+      .footer-inner {
+        max-width: 1280px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 32px;
+      }
+      @media (max-width: 768px) {
+        .footer-inner {
+          grid-template-columns: 1fr;
+        }
+      }
+      .footer-brand {
+        font-weight: 800;
+        font-size: 1.1rem;
+        color: var(--accent-cyan);
+        margin-bottom: 8px;
+      }
+      .footer-desc {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        line-height: 1.7;
+      }
+      .footer-col h4 {
+        font-size: 0.7rem;
+        font-family: var(--font-mono);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+      }
+      .footer-col p,
+      .footer-col li {
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        line-height: 1.8;
+        list-style: none;
+      }
+      .footer-col li::before {
+        content: "→ ";
+        color: var(--accent-cyan);
+      }
+      .footer-bottom {
+        max-width: 1280px;
+        margin: 32px auto 0;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.04);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 0.72rem;
+        font-family: var(--font-mono);
+        color: var(--text-muted);
+      }
+      .footer-bottom span {
+        color: var(--accent-cyan);
+      }
+
+      /* ══════════════════════════════════════
+     ANIMATIONS
+  ══════════════════════════════════════ */
+      @keyframes fadeSlideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes pulse-green {
+        0%,
+        100% {
+          box-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
+        }
+        50% {
+          box-shadow: 0 0 18px rgba(0, 255, 136, 0.9);
+        }
+      }
+      @keyframes pulse-red {
+        0%,
+        100% {
+          box-shadow: 0 0 6px rgba(255, 63, 94, 0.5);
+        }
+        50% {
+          box-shadow: 0 0 18px rgba(255, 63, 94, 0.9);
+        }
+      }
+      @keyframes pulse-amber {
+        0%,
+        100% {
+          box-shadow: 0 0 6px rgba(255, 179, 0, 0.5);
+        }
+        50% {
+          box-shadow: 0 0 18px rgba(255, 179, 0, 0.9);
+        }
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      @keyframes stripeFlash {
+        0%,
+        100% {
+          opacity: 0.85;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      @keyframes carDrive {
+        0% {
+          left: -60px;
+        }
+        40% {
+          left: 38%;
+          opacity: 1;
+        }
+        45% {
+          left: 38%;
+          opacity: 0.2;
+        }
+        50% {
+          left: 38%;
+          opacity: 0;
+        }
+        51% {
+          left: -60px;
+          opacity: 0;
+        }
+        55% {
+          left: -60px;
+          opacity: 1;
+        }
+        100% {
+          left: -60px;
+        }
+      }
+      @keyframes pedWalk {
+        0% {
+          right: 20px;
+          opacity: 0;
+        }
+        10% {
+          opacity: 1;
+        }
+        50% {
+          right: 55%;
+          opacity: 1;
+        }
+        70% {
+          right: 55%;
+          opacity: 0;
+        }
+        100% {
+          right: 20px;
+          opacity: 0;
+        }
+      }
+      @keyframes flowDot {
+        0% {
+          left: 0;
+        }
+        100% {
+          left: 100%;
+        }
+      }
+      @keyframes rowIn {
+        from {
+          opacity: 0;
+          transform: translateX(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      @keyframes countUp {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      /* ── Intersection Observer fade-in ── */
+      .reveal {
+        opacity: 0;
+        transform: translateY(30px);
+        transition:
+          opacity 0.7s,
+          transform 0.7s;
+      }
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* ══════════════════════════════════════
+     LIVE VIOLATION RECORDS
+  ══════════════════════════════════════ */
+      .violations-header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+      .violations-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--accent-red);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      .violations-subtitle {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        letter-spacing: 0.05em;
+      }
+
+      .violations-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+      }
+
+      .violation-card {
+        position: relative;
+        overflow: hidden;
+        border-radius: var(--radius);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        transition: all 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+        cursor: pointer;
+      }
+
+      .violation-card:hover {
+        transform: translateY(-8px);
+        border-color: rgba(255, 63, 94, 0.5);
+        box-shadow:
+          0 20px 60px rgba(255, 63, 94, 0.15),
+          inset 0 0 40px rgba(255, 63, 94, 0.08);
+        background: rgba(255, 63, 94, 0.05);
+      }
+
+      .violation-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--accent-red),
+          transparent
+        );
+        opacity: 0;
+        transition: opacity 0.35s;
+      }
+
+      .violation-card:hover::before {
+        opacity: 1;
+      }
+
+      .violation-image-container {
+        position: relative;
+        width: 100%;
+        height: 200px;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 63, 94, 0.1),
+          rgba(0, 128, 255, 0.1)
+        );
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+      }
+
+      .violation-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: brightness(0.9) contrast(1.1);
+      }
+
+      .violation-placeholder {
+        font-size: 3rem;
+        opacity: 0.3;
+      }
+
+      .violation-loading {
+        width: 60px;
+        height: 60px;
+      }
+
+      .violation-status-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: rgba(255, 63, 94, 0.95);
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        font-family: var(--font-mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        box-shadow: 0 0 15px rgba(255, 63, 94, 0.6);
+        border: 1px solid rgba(255, 63, 94, 0.8);
+      }
+
+      .violation-content {
+        padding: 20px;
+      }
+
+      .violation-id {
+        font-size: 0.7rem;
+        font-family: var(--font-mono);
+        color: var(--accent-cyan);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 12px;
+        opacity: 0.8;
+      }
+
+      .violation-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .violation-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+      }
+
+      .violation-meta-label {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-family: var(--font-mono);
+        letter-spacing: 0.05em;
+        min-width: 45px;
+      }
+
+      .violation-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 14px;
+        border-top: 1px solid rgba(0, 245, 255, 0.1);
+        font-size: 0.8rem;
+      }
+
+      .violation-camera-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--accent-green);
+      }
+
+      .camera-indicator {
+        width: 6px;
+        height: 6px;
+        background: var(--accent-green);
+        border-radius: 50%;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      .violations-empty {
+        text-align: center;
+        padding: 60px 40px;
+        background: var(--glass-bg);
+        border: 1px dashed var(--glass-border);
+        border-radius: var(--radius);
+        color: var(--text-muted);
+      }
+
+      .violations-empty-icon {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+
+      .violations-empty-text {
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+      }
+
+      .violations-empty-sub {
+        font-size: 0.8rem;
+        opacity: 0.7;
+      }
+
+      .violations-loading-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 40px;
+      }
+
+      /* Loading spinner */
+      .spinner {
+        width: 50px;
+        height: 50px;
+        position: relative;
+      }
+
+      .spinner::before,
+      .spinner::after {
+        content: "";
+        position: absolute;
+        border-radius: 50%;
+        border: 3px solid transparent;
+        animation: spin 1.5s linear infinite;
+      }
+
+      .spinner::before {
+        inset: 0;
+        border-top-color: var(--accent-red);
+        border-right-color: var(--accent-red);
+      }
+
+      .spinner::after {
+        inset: 8px;
+        border-bottom-color: var(--accent-cyan);
+        border-left-color: var(--accent-cyan);
+        animation-direction: reverse;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          box-shadow: 0 0 8px var(--accent-green);
+        }
+        50% {
+          opacity: 0.5;
+          box-shadow: 0 0 4px var(--accent-green);
+        }
+      }
+
+      /* Scan-line effect */
+      @keyframes scanlines {
+        0% {
+          transform: translateY(-100%);
+        }
+        100% {
+          transform: translateY(100%);
+        }
+      }
+
+      .violation-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          180deg,
+          transparent 0%,
+          rgba(0, 245, 255, 0.03) 50%,
+          transparent 100%
+        );
+        animation: scanlines 3s linear infinite;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.35s;
+      }
+
+      .violation-card:hover::after {
+        opacity: 1;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .violations-grid {
+          grid-template-columns: 1fr;
+        }
+        .violation-image-container {
+          height: 150px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="starfield"></canvas>
+
+    <div class="page">
+      <!-- ─── NAV ─── -->
+      <nav>
+        <div class="nav-logo">
+          <div class="dot"></div>
+          SafeCross - Smart Pedestrian Safety System
+        </div>
+        <div class="nav-links">
+          <a href="#dashboard">Dashboard</a>
+          <a href="#status">Status</a>
+          <a href="#log">Log</a>
+          <a href="#chart">Analytics</a>
+          <a href="#flow">System</a>
+        </div>
+        <div class="nav-status">
+          <div class="led"></div>
+          LIVE
+        </div>
+      </nav>
+
+      <!-- ─── HERO ─── -->
+      <section id="hero">
+        <div class="hero-badge">
+          <span class="blink">●</span>&nbsp;AI-Powered Infrastructure · v2.4.1
+        </div>
+        <h1 class="hero-title">Smart Zebra Crossing<br />System</h1>
+        <p class="hero-subtitle">
+          <span>SafeCross</span> — AI-Enabled Pedestrian Safety &amp; Traffic
+          Management
+        </p>
+        <div class="hero-actions">
+          <button
+            class="btn-primary"
+            onclick="
+              document
+                .getElementById('dashboard')
+                .scrollIntoView({ behavior: 'smooth' })
+            "
+          >
+            ⚡ View Dashboard
+          </button>
+          <button
+            class="btn-secondary"
+            onclick="
+              document
+                .getElementById('flow')
+                .scrollIntoView({ behavior: 'smooth' })
+            "
+          >
+            System Flow →
+          </button>
+        </div>
+        <div class="hero-visual">
+          <div class="crossing-road">
+            <div class="crossing-stripes">
+              <div class="stripe"></div>
+              <div class="stripe"></div>
+              <div class="stripe"></div>
+              <div class="stripe"></div>
+              <div class="stripe"></div>
+              <div class="stripe"></div>
+              <div class="stripe"></div>
+              <div class="stripe"></div>
+            </div>
+            <div class="car-icon">🚗</div>
+            <div class="ped-icon">🚶</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── DASHBOARD ─── -->
+      <section id="dashboard">
+        <div class="container">
+          <div class="section-label">Live Data</div>
+          <h2 class="section-title">System <span>Dashboard</span></h2>
+          <div class="stats-grid reveal">
+            <div class="glass stat-card">
+              <div class="stat-icon">🚗</div>
+              <div class="stat-label">Total Vehicles Detected</div>
+              <div class="stat-value" id="stat-vehicles">0</div>
+              <div class="stat-sub">
+                <span class="up">↑ 12%</span> vs last hour
+              </div>
+            </div>
+            <div class="glass stat-card">
+              <div class="stat-icon">🚶</div>
+              <div class="stat-label">Pedestrians Crossed</div>
+              <div class="stat-value" id="stat-peds">0</div>
+              <div class="stat-sub">
+                <span class="up">↑ 8%</span> vs last hour
+              </div>
+            </div>
+            <div class="glass stat-card">
+              <div class="stat-icon">⚠️</div>
+              <div class="stat-label">Alerts Generated</div>
+              <div class="stat-value" id="stat-alerts">0</div>
+              <div class="stat-sub">
+                Last: <span id="last-alert-time">—</span>
+              </div>
+            </div>
+            <div class="glass stat-card">
+              <div class="stat-icon">⏱</div>
+              <div class="stat-label">Avg Wait Time (sec)</div>
+              <div class="stat-value" id="stat-wait">0</div>
+              <div class="stat-sub">Per pedestrian cycle</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── STATUS ─── -->
+      <section id="status">
+        <div class="container">
+          <div class="section-label">Real-Time</div>
+          <h2 class="section-title">System <span>Status</span></h2>
+          <div class="status-layout reveal">
+            <!-- Status Rows -->
+            <div class="glass status-panel">
+              <h3>Sensor &amp; Module Status</h3>
+              <div id="status-rows"></div>
+            </div>
+            <!-- Signal + Toggles -->
+            <div style="display: flex; flex-direction: column; gap: 20px">
+              <div
+                class="glass signal-wrap"
+                style="flex-direction: column; gap: 0"
+              >
+                <div class="signal-pole">
+                  <div class="signal-box">
+                    <div class="signal-light" id="light-red"></div>
+                    <div class="signal-light" id="light-amber"></div>
+                    <div class="signal-light" id="light-green"></div>
+                  </div>
+                  <div class="signal-stem"></div>
+                  <div class="signal-base"></div>
+                </div>
+                <div class="signal-label">Crossing Signal</div>
+                <div id="signal-status-text">— READY —</div>
+              </div>
+              <div class="glass" style="padding: 24px">
+                <h3
+                  style="
+                    font-size: 0.72rem;
+                    font-family: var(--font-mono);
+                    letter-spacing: 0.14em;
+                    text-transform: uppercase;
+                    color: var(--text-muted);
+                    margin-bottom: 16px;
+                  "
+                >
+                  Manual Override
+                </h3>
+                <div class="toggle-group">
+                  <div class="toggle-item">
+                    <span class="toggle-label">🚗 Vehicle Detection</span>
+                    <label class="switch">
+                      <input
+                        type="checkbox"
+                        id="tog-vehicle"
+                        onchange="handleToggle('vehicle', this.checked)"
+                      />
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                  <div class="toggle-item">
+                    <span class="toggle-label">🚶 Pedestrian Crossing</span>
+                    <label class="switch">
+                      <input
+                        type="checkbox"
+                        id="tog-ped"
+                        onchange="handleToggle('ped', this.checked)"
+                      />
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                  <div class="toggle-item">
+                    <span class="toggle-label">🔔 Alert Mode</span>
+                    <label class="switch">
+                      <input
+                        type="checkbox"
+                        id="tog-alert"
+                        onchange="handleToggle('alert', this.checked)"
+                      />
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── LOG ─── -->
+      <section id="log">
+        <div class="container">
+          <div class="section-label">Activity</div>
+          <h2 class="section-title">Event <span>Log</span></h2>
+          <div class="glass log-wrap reveal">
+            <div class="log-table-header">
+              <span>#</span><span>Event</span><span>Location</span
+              ><span>Timestamp</span><span>Status</span>
+            </div>
+            <div class="log-scroll" id="log-scroll"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── CHART ─── -->
+      <section id="chart">
+        <div class="container">
+          <div class="section-label">Analytics</div>
+          <h2 class="section-title">Activity <span>Trends</span></h2>
+          <div class="glass chart-wrap reveal">
+            <div class="chart-header">
+              <span class="chart-title"
+                >Vehicles vs Pedestrians — Last 12 Intervals</span
+              >
+              <div class="chart-legend">
+                <div class="legend-item">
+                  <div
+                    class="legend-dot"
+                    style="background: var(--accent-cyan)"
+                  ></div>
+                  Vehicles
+                </div>
+                <div class="legend-item">
+                  <div
+                    class="legend-dot"
+                    style="background: var(--accent-green)"
+                  ></div>
+                  Pedestrians
+                </div>
+              </div>
+            </div>
+            <canvas id="activityChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── LIVE VIOLATIONS ─── -->
+      <section id="violations">
+        <div class="container">
+          <div class="violations-header">
+            <div class="violations-title">
+              🚨 Live Traffic Violations
+            </div>
+            <div class="violations-subtitle">
+              AI-powered real-time vehicle monitoring and enforcement system
+            </div>
+          </div>
+
+          <!-- Loading State -->
+          <div id="violations-loading" class="violations-loading-wrapper" style="display: none;">
+            <div class="spinner"></div>
+          </div>
+
+          <!-- Violations Grid -->
+          <div id="violations-container" class="violations-grid reveal">
+            <!-- Violation cards will be dynamically inserted here -->
+          </div>
+
+          <!-- Empty State -->
+          <div id="violations-empty" class="violations-empty" style="display: none;">
+            <div class="violations-empty-icon">📹</div>
+            <div class="violations-empty-text">No violations detected</div>
+            <div class="violations-empty-sub">All vehicles compliant with traffic rules</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── FLOW ─── -->
+      <section id="flow">
+        <div class="container">
+          <div class="section-label">Architecture</div>
+          <h2 class="section-title">System <span>Flow</span></h2>
+          <div class="glass flow-wrap reveal">
+            <div class="flow-nodes">
+              <div class="flow-node">
+                <div class="node-icon">📡</div>
+                <div class="node-label">IR / Ultrasonic<br />Sensors</div>
+              </div>
+              <div class="flow-arrow"><div class="arrow-dot"></div></div>
+              <div class="flow-node">
+                <div class="node-icon">🔌</div>
+                <div class="node-label">ESP32<br />Microcontroller</div>
+              </div>
+              <div class="flow-arrow"><div class="arrow-dot"></div></div>
+              <div class="flow-node">
+                <div class="node-icon">🚦</div>
+                <div class="node-label">Signal<br />Controller</div>
+              </div>
+              <div class="flow-arrow"><div class="arrow-dot"></div></div>
+              <div class="flow-node">
+                <div class="node-icon">🗄️</div>
+                <div class="node-label">Firebase<br />Database</div>
+              </div>
+              <div class="flow-arrow"><div class="arrow-dot"></div></div>
+              <div class="flow-node">
+                <div class="node-icon">📊</div>
+                <div class="node-label">SafeCross<br />Dashboard</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── FOOTER ─── -->
+      <footer>
+        <div class="footer-inner">
+          <div>
+            <div class="footer-brand">⚡ SafeCross</div>
+            <p class="footer-desc">
+              AI-enabled smart zebra crossing system for next-generation smart
+              city infrastructure. Enhancing pedestrian safety through real-time
+              sensing and adaptive signal control.
+            </p>
+          </div>
+          <div class="footer-col">
+            <h4>Project Team</h4>
+            <ul>
+              <li>Samyak Gedam — AI &amp; ML Lead</li>
+              <li>Samrudhi Chattar — Embedded Systems</li>
+              <li>Samruddhi Salam — Backend &amp; Cloud</li>
+              <li>Sameera Watharkar — UI/UX Designer</li>
+              <li>Sameer Jaiswal — Project Lead</li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Institution</h4>
+            <p>Department of Computer Engineering</p>
+            <br />
+            <p style="color: var(--accent-cyan); font-weight: 700">
+              Vishwakarma Institute of Technology
+            </p>
+            <p>Pune, Maharashtra — 411037</p>
+            <br />
+            <p>Academic Year 2026-27</p>
+            <p>First Year Project · B.Tech</p>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <span>© 2026 SafeCross — Smart Zebra Crossing System</span>
+          <span>All rights reserved · <span>VIT Pune</span></span>
+        </div>
+      </footer>
+    </div>
+    <!-- .page -->
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
