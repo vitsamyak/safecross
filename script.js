@@ -632,3 +632,33 @@ setTimeout(() => {
 }, 1000);
 
 // Real-time Firebase listener already set up in fetchViolations()
+
+/* ════════════════════════════════════
+   MOBILE BURGER MENU
+════════════════════════════════════ */
+const burgerMenuBtn = document.getElementById('burger-menu');
+const navMenuMobile = document.getElementById('nav-menu-mobile');
+
+if (burgerMenuBtn) {
+  burgerMenuBtn.addEventListener('click', () => {
+    burgerMenuBtn.classList.toggle('active');
+    navMenuMobile.classList.toggle('active');
+  });
+
+  // Close menu when a link is clicked
+  const mobileLinks = navMenuMobile.querySelectorAll('a');
+  mobileLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      burgerMenuBtn.classList.remove('active');
+      navMenuMobile.classList.remove('active');
+    });
+  });
+
+  // Close menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('nav') && !e.target.closest('.nav-menu-mobile')) {
+      burgerMenuBtn.classList.remove('active');
+      navMenuMobile.classList.remove('active');
+    }
+  });
+}
